@@ -1,17 +1,6 @@
 🤖 Claude Code Auto-Resume Guide
 - This guide will help you automatically resume Claude Code whenever you see the "You've hit your limit" message. It checks your status every hour and automatically presses Enter to keep your work moving.
 
-1.파일 구성: 전달받은 6개의 파일을 한 폴더에 넣습니다. 
-2.권한 설정 생략: 원래는 '권한 부여'라는 복잡한 단계가 필요하지만, 제가 드린 파일(`run.bat`)이 실행될 때 알아서 처리하도록 만들어 두었습니다. 
-3.실행 방법: `tmux_keep_alive_on.bat`를 관리자 권한으로 한 번만 실행해 두세요. 마우스 오른쪽 버튼 후 관리자 권한으로 실행(A)
-
-그 다음부터는 `tmux_laun
-ch-team.bat`으로 Claude Code를 시작하기만 하면 됩니다.
-
----
-
-Here is the step-by-step guide in English for non-developers to use the "One-Click" Claude Code automation.
-
 ---
 ### 1. File Setup
 Place all 6 files you received into a single folder of your choice.
