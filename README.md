@@ -1,36 +1,120 @@
-🤖 Claude Code Auto-Resume Guide
-- This guide will help you automatically resume Claude Code whenever you see the "You've hit your limit" message. It checks your status every hour and automatically presses Enter to keep your work moving.
+# wakeclaude for Windows
 
-![Rate Limit Options](Resources/rate-limit-options.png)
+A Windows port of [wakeclaude](https://github.com/rittikbasu/wakeclaude) — a TUI to schedule Claude Code prompts so your sessions keep running even when you hit rate limits or go to sleep.
 
----
-### 1. File Setup
-Place all 6 files you received into a single folder of your choice.
+All features of the original macOS version have been ported to Windows, replacing macOS-specific system APIs with native Windows equivalents.
 
+## why it exists
+
+When you hit the 5-hour session rate limit on your Claude plan, work stops mid-flow. This tool lets you schedule a prompt to auto-resume right when the limit resets — or queue up work to run while you sleep.
+
+## what it does
+
+- Pick a project, pick a session (or start a new one)
+- Write the prompt
+- Choose a model + permission mode
+- Schedule it (one-time, daily, or weekly)
+- Wakes your PC from sleep only when needed and runs the prompt
+- Keeps logs + shows a simple run history
+- Sends a native Windows toast notification on success/error
+
+## how it works (Windows)
+
+| Feature | macOS (original) | Windows (this port) |
+|---|---|---|
+| **Scheduling daemon** | `launchd` (LaunchDaemons) | Windows Task Scheduler (`schtasks`) |
+| **Wake from sleep** | `pmset schedule wakeorpoweron` | Task Scheduler `WakeToRun` setting |
+| **Token storage** | macOS Keychain (`security`) | DPAPI-encrypted XML file (`%APPDATA%\WakeClaude\token.xml`) |
+| **Notifications** | AppleScript (`osascript`) | WinRT Toast via PowerShell |
+| **Data directory** | `~/Library/Application Support/WakeClaude` | `%APPDATA%\WakeClaude` |
+| **Privilege model** | Runs as root, drops to user via `launchctl asuser` | Task Scheduler runs directly as the logged-in user |
+
+> **Note on wake from sleep:** Windows Task Scheduler can wake the PC if "Allow wake timers" is enabled in your active Power Plan (`Control Panel → Power Options → Change plan settings → Change advanced power settings → Sleep → Allow wake timers → Enable`).
+
+## quickstart
+
+1. Build:
+
+   ```powershell
+   go build -o wakeclaude.exe ./cmd/wakeclaude
+   ```
+
+2. Run:
+
+   ```powershell
+   .\wakeclaude.exe
+   ```
+
+## setup token (required)
+
+wakeclaude uses a long-lived Claude Code token so scheduled prompts keep working even after you close the terminal.
+
+Generate one in a separate terminal:
+
+```bash
+claude setup-token
 ```
-tmux_keep_alive.sh
-tmux_keep_alive_run.bat
-tmux_keep_alive_on.bat
-tmux_keep_alive_off.bat
-tmux_launch-team.sh
-tmux_launch-team.bat
-```
 
-### 2. No Manual Setup Required
-Usually, complex "permission settings" are required for these tools. However, I have automated this process within the files, so you don't need to type any commands.
+Paste it into wakeclaude when prompted. It is stored in `%APPDATA%\WakeClaude\token.xml`, encrypted with Windows DPAPI (only readable by the same Windows user on the same machine).
 
-### 3. How to Start (One-time Setup)
-1. In your folder, find the file named `tmux_keep_alive_on.bat`.
-2. Right-click it and select "Run as administrator".
-3. Once the black window shows `[ON] Done.`, you can press any key to close it.
- - Now, your computer will automatically check for limits every hour on the hour (e.g., 9:00, 10:00).
+## usage (TUI)
 
-### 4. Running Claude Code
- - From now on, simply double-click `tmux_launch-team.bat` to start your Claude Code project.
+You'll see a simple menu:
 
----
+- **Schedule a prompt** (project → session → prompt → model → permission → time)
+- **Manage scheduled prompts** (edit/delete)
+- **View run logs**
 
-### 💡 Quick Tips
- - What if I hit a limit? Just leave it alone. The system will detect the limit and "Double Enter" for you automatically at the top of the next hour.
- - How to stop the automation? If you no longer want the hourly checks, right-click `tmux_keep_alive_off.bat` and "Run as administrator".
- - Keep the files together: Do not move the files to different folders; they must stay together to work correctly.
+Controls:
+
+- Arrow keys to move, `Enter` to select
+- Type to search (projects, sessions, schedules, logs)
+- `Esc` to go back, `q` to quit
+- Prompt entry: `Ctrl+D` to continue
+
+## models + permission modes
+
+Models:
+- `opus`
+- `sonnet`
+- `haiku`
+
+Permission modes:
+- `acceptEdits` – auto-accept file edits + filesystem access
+- `plan` – read-only, no commands or file changes
+- `bypassPermissions` – skips permission checks (use with care)
+
+## logs + notifications
+
+Data lives here:
+
+- `%APPDATA%\WakeClaude\schedules.json`
+- `%APPDATA%\WakeClaude\logs.jsonl`
+- `%APPDATA%\WakeClaude\logs\*.log`
+
+Run logs are retained (last 50) and shown in the TUI. Each run also sends a native Windows toast notification via PowerShell/WinRT.
+
+## flags
+
+- `--projects-root <path>`: override default `~/.claude/projects`
+- `--run <id>`: internal (used by Task Scheduler)
+
+## requirements
+
+- Windows 10 or later (WinRT Toast notifications require Windows 10+)
+- PowerShell 5.1+ (included with Windows 10)
+- [Claude Code](https://claude.ai/download) installed and accessible in PATH
+- Claude Code sessions under `~/.claude/projects`
+
+## assumptions
+
+- Claude Code sessions live under `~/.claude/projects`
+- Root-level `.jsonl` files are sessions
+- Project display names are derived from the session `cwd` when available
+- `claude` (or `claude.exe` / `claude.cmd`) must be in your PATH at scheduling time
+
+## contributing
+
+Open a PR if you want — bug fixes, UX polish, or smarter scheduling ideas are welcome.
+
+Original macOS version: https://github.com/rittikbasu/wakeclaude
