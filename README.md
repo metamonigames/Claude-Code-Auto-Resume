@@ -1,120 +1,54 @@
-# wakeclaude for Windows
+# Claude WSL Auto-Ping
 
-A Windows port of [wakeclaude](https://github.com/rittikbasu/wakeclaude) — a TUI to schedule Claude Code prompts so your sessions keep running even when you hit rate limits or go to sleep.
+A lightweight automation suite to keep your **Claude Code** sessions alive in WSL and automate task progression during specific hours.
 
-All features of the original macOS version have been ported to Windows, replacing macOS-specific system APIs with native Windows equivalents.
+## Features
 
-## why it exists
+* **Hourly Keep-Alive**: Prevents session timeouts by sending a "ping" every 60 minutes.
+* **Time-Aware Model Switching**: Automatically switches between models based on the time of day.
+* **Day Shift (08:00 - 01:59)**: Uses the cost-effective **Haiku** model for simple pings.
+* **Night Shift (02:00 - 07:59)**: Uses **Sonnet** to proceed with tasks and auto-commit changes.
 
-When you hit the 5-hour session rate limit on your Claude plan, work stops mid-flow. This tool lets you schedule a prompt to auto-resume right when the limit resets — or queue up work to run while you sleep.
 
-## what it does
+* **Windows Integration**: Uses the native **Windows Task Scheduler** (`schtasks`) to ensure pings run in the background without needing an open terminal.
+* 
+**WSL Native**: Designed to work with Claude Code installed inside a WSL (Ubuntu) environment.
 
-- Pick a project, pick a session (or start a new one)
-- Write the prompt
-- Choose a model + permission mode
-- Schedule it (one-time, daily, or weekly)
-- Wakes your PC from sleep only when needed and runs the prompt
-- Keeps logs + shows a simple run history
-- Sends a native Windows toast notification on success/error
 
-## how it works (Windows)
 
-| Feature | macOS (original) | Windows (this port) |
-|---|---|---|
-| **Scheduling daemon** | `launchd` (LaunchDaemons) | Windows Task Scheduler (`schtasks`) |
-| **Wake from sleep** | `pmset schedule wakeorpoweron` | Task Scheduler `WakeToRun` setting |
-| **Token storage** | macOS Keychain (`security`) | DPAPI-encrypted XML file (`%APPDATA%\WakeClaude\token.xml`) |
-| **Notifications** | AppleScript (`osascript`) | WinRT Toast via PowerShell |
-| **Data directory** | `~/Library/Application Support/WakeClaude` | `%APPDATA%\WakeClaude` |
-| **Privilege model** | Runs as root, drops to user via `launchctl asuser` | Task Scheduler runs directly as the logged-in user |
+## Components
 
-> **Note on wake from sleep:** Windows Task Scheduler can wake the PC if "Allow wake timers" is enabled in your active Power Plan (`Control Panel → Power Options → Change plan settings → Change advanced power settings → Sleep → Allow wake timers → Enable`).
+* 
+`claude_auto_ping.sh`: The core logic script running inside WSL that detects the time and executes the appropriate Claude command.
 
-## quickstart
 
-1. Build:
+* `auto_ping_on.bat`: Windows batch file to register the hourly task in the Windows Task Scheduler.
+* `auto_ping_off.bat`: Windows batch file to stop and remove the scheduled task.
 
-   ```powershell
-   go build -o wakeclaude.exe ./cmd/wakeclaude
-   ```
+## Setup
 
-2. Run:
+1. **Place Files**: Keep all three files (`.sh`, `auto_ping_on.bat`, `auto_ping_off.bat`) in the same directory within your Windows filesystem.
+2. 
+**Permissions**: Ensure your WSL user has execution permissions for the shell script (the `on` batch file attempts to handle this automatically).
 
-   ```powershell
-   .\wakeclaude.exe
-   ```
 
-## setup token (required)
+3. **Activation**:
+* Run `auto_ping_on.bat` to start the automation.
+* The task will now run every 60 minutes in the background.
 
-wakeclaude uses a long-lived Claude Code token so scheduled prompts keep working even after you close the terminal.
 
-Generate one in a separate terminal:
 
-```bash
-claude setup-token
-```
+## Usage Logic
 
-Paste it into wakeclaude when prompted. It is stored in `%APPDATA%\WakeClaude\token.xml`, encrypted with Windows DPAPI (only readable by the same Windows user on the same machine).
+| Time Range | Model (via Environment Var) | Prompt | Goal |
+| --- | --- | --- | --- |
+| **08:00 - 01:59** | `claude-3-haiku` | "ping" | Maintain Session |
+| **02:00 - 07:59** | `claude-3-7-sonnet` | "Proceed with the next task..." | Autonomous Progress |
 
-## usage (TUI)
+## Requirements
 
-You'll see a simple menu:
+* 
+**WSL (Ubuntu)** with Claude Code installed and authenticated.
 
-- **Schedule a prompt** (project → session → prompt → model → permission → time)
-- **Manage scheduled prompts** (edit/delete)
-- **View run logs**
 
-Controls:
-
-- Arrow keys to move, `Enter` to select
-- Type to search (projects, sessions, schedules, logs)
-- `Esc` to go back, `q` to quit
-- Prompt entry: `Ctrl+D` to continue
-
-## models + permission modes
-
-Models:
-- `opus`
-- `sonnet`
-- `haiku`
-
-Permission modes:
-- `acceptEdits` – auto-accept file edits + filesystem access
-- `plan` – read-only, no commands or file changes
-- `bypassPermissions` – skips permission checks (use with care)
-
-## logs + notifications
-
-Data lives here:
-
-- `%APPDATA%\WakeClaude\schedules.json`
-- `%APPDATA%\WakeClaude\logs.jsonl`
-- `%APPDATA%\WakeClaude\logs\*.log`
-
-Run logs are retained (last 50) and shown in the TUI. Each run also sends a native Windows toast notification via PowerShell/WinRT.
-
-## flags
-
-- `--projects-root <path>`: override default `~/.claude/projects`
-- `--run <id>`: internal (used by Task Scheduler)
-
-## requirements
-
-- Windows 10 or later (WinRT Toast notifications require Windows 10+)
-- PowerShell 5.1+ (included with Windows 10)
-- [Claude Code](https://claude.ai/download) installed and accessible in PATH
-- Claude Code sessions under `~/.claude/projects`
-
-## assumptions
-
-- Claude Code sessions live under `~/.claude/projects`
-- Root-level `.jsonl` files are sessions
-- Project display names are derived from the session `cwd` when available
-- `claude` (or `claude.exe` / `claude.cmd`) must be in your PATH at scheduling time
-
-## contributing
-
-Open a PR if you want — bug fixes, UX polish, or smarter scheduling ideas are welcome.
-
-Original macOS version: https://github.com/rittikbasu/wakeclaude
+* **Windows 10/11** for Task Scheduler support.
